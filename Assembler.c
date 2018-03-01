@@ -3,26 +3,21 @@
 
 int main() {
 
-    String hi = "hi";
+    char s[] = "a b c";
 
-    printf("%s",hi);
-
+    split(s);
+    /*
     char lines[100][100];
     int i = 0;
 
     FILE *file;
     file = fopen("run.a", "r");
-
-    printf("1");
-    char *s = "a b c";
-    split(s);
-    printf("2");
+    //char *s = "a b c";
     //takes the lines from the file and puts it into 'lines' array
     while(fgets(lines[i], 100,  file)) {
-        printf("%s", lines[i]);
         split(lines[i]);
         i++;
-    }
+    }*/
 }
 
 void split(char s[]) {
@@ -31,7 +26,7 @@ void split(char s[]) {
 
   //replace all tabs with spaces
   while(s[i] != '\0') {
-    if(s[i]=='\t') {    printf("test");
+    if(s[i]=='\t') {
         s[i] = ' ';
     }
     i++;
@@ -40,7 +35,7 @@ void split(char s[]) {
   token = strtok (s," ");
   while (token != NULL)
   {
-    printf("test");
+    printf("%s\n", token);
     token = strtok (NULL, " ");
   }
   return 0;
