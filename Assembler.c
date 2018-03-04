@@ -10,36 +10,52 @@
 #include <string.h>
 #include <stdlib.h>
 
+/*
+ * Function Prototypes
+ */
 char **split(char s[]);
 int countTokens(char* s);
-
-char ***instructions;
+int countLines(FILE*);
 
 int main() {
     
-    char s[] = "Push: lw 1  2 3 #hello man!";
+    char s[] = "Push: lw 1   2 3 #hello man! what is up am i right alkadsj alsdfkjads fljm i right";
     int tokinstr = countTokens(s);
     char **instr = split(s);
     
+    //counts
+    int countLines = 0;
+    
+    //current line in the input
+    char** line;
+    
+    //our entire program array
+    char*** prgrm;
+    
     int i = 0;
     
-    for(i = 0; i<tokinstr; i++) {
-        printf("%s\n", instr[i]);
+    //opcodes
+    char **opcodes = {"lw", "sw", "add", "nand", "beq", "jalr", "halt", "noop"};
+    
+    FILE *file;
+    if ((file = fopen("run.a", "r"))) {
+        printf("True");
     }
-    
-    
+    else {
+        printf("false\n");
+        printf("Couldn't find the file\n");
+        return 0;
+    }
     /*
-     char lines[100][100];
-     int i = 0;
-     
-     FILE *file;
-     file = fopen("run.a", "r");
-     //char *s = "a b c";
-     //takes the lines from the file and puts it into 'lines' array
-     while(fgets(lines[i], 100,  file)) {
-     split(lines[i]);
-     i++;
-     }*/
+     * Going through the file:
+     * Take lines in as
+     *
+     */
+    while(fgets(line, 255,  file)) {
+        countLines++;
+        prgrm[i] = strdup(line);
+        i++;
+    }
     return 0;
 }
 
@@ -65,14 +81,6 @@ char **split(char s[]) {
         
         i++;
     }
-    
-    //replace all tabs with spaces
-    while(s[i] != '\0') {
-        if(s[i]=='\t') {
-            s[i] = ' ';
-        }
-        i++;
-    }
     return instr;
 }
 
@@ -94,3 +102,18 @@ int countTokens(char* s) {
     return count;
 }
 
+int countLines(FILE* f) {
+    int lines = 0;
+    int c;
+    
+    if (f == NULL) {
+        return 0;
+    }
+    while((c = fgetc(f)) != EOF) {
+        if (c == '\n') {
+            lines++;
+        }
+    }
+    fclose(f);
+    return lines;
+}
