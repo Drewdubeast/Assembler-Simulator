@@ -3,69 +3,117 @@
 //  Assembler-Simulator-XP
 //
 //  Created by Drew Wilken on 3/1/18.
-//  Copyright © 2018 Drew Wilken. All rights reserved.
+//  Copyright © 2018 Drew Wilken and Nathan Taylor. All rights reserved.
 //
 
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 
+/*
+ * Function Prototypes
+ */
 char **split(char s[]);
+int countTokens(char* s);
+int countLines(FILE*);
 
 int main() {
     
-    char s[] = "lw 1 2 0 hello there man";
-    
+    char s[] = "Push: lw 1   2 3 #hello man! what is up am i right alkadsj alsdfkjads fljm i right";
+    int tokinstr = countTokens(s);
     char **instr = split(s);
     
-    int i =0;
-    for(i=0;i<10;i++) {
-        printf("%s\n", instr[i]);
-    }
+    //counts
+    int countLines = 0;
     
+    //current line in the input
+    char** line;
+    
+    //our entire program array
+    char*** prgrm;
+    
+    int i = 0;
+    
+    //opcodes
+    char **opcodes = {"lw", "sw", "add", "nand", "beq", "jalr", "halt", "noop"};
+    
+    FILE *file;
+    if ((file = fopen("run.a", "r"))) {
+        printf("True");
+    }
+    else {
+        printf("false\n");
+        printf("Couldn't find the file\n");
+        return 0;
+    }
     /*
-     char lines[100][100];
-     int i = 0;
-     
-     FILE *file;
-     file = fopen("run.a", "r");
-     //char *s = "a b c";
-     //takes the lines from the file and puts it into 'lines' array
-     while(fgets(lines[i], 100,  file)) {
-     split(lines[i]);
-     i++;
-     }*/
+     * Going through the file:
+     * Take lines in as
+     *
+     */
+    while(fgets(line, 255,  file)) {
+        countLines++;
+        prgrm[i] = strdup(line);
+        i++;
+    }
     return 0;
 }
 
+
+
+/*
+ * Splits a string into tokens and returns a pointer to a str array
+ */
 char **split(char s[]) {
     char *token;
     int i = 0;
-    //allocate memory for the str array so that it can be returned and not
-    //just a reference to the main memory stack
-    char **instr = malloc(5 * sizeof(char*));
-    for (int i = 0 ; i < 5; ++i)
-        instr[i] = malloc(10 * sizeof(char));
+    int count = countTokens(s);
     
-    //replace all tabs with spaces
-    while(s[i] != '\0') {
-        if(s[i]=='\t') {
-            s[i] = ' ';
-        }
-        i++;
-    }
+    char **instr = malloc((count+1) * sizeof(char*));
     
-    i=0;
+    //get a count of tokens so we can allocate memory for them
     token = strtok (s," ");
     while (token != NULL)
     {
-        instr[i++] = token;
-        //printf("%s\n", instr[i-1]);
+        //since token reference keeps changing and is static, use strdup instead.
+        instr[i] = strdup(token);
         token = strtok (NULL, " ");
-    }
-    for (i = 0; i < 10; i++) {
-        //printf("%s\n", instr[i]);
+        
+        i++;
     }
     return instr;
 }
 
+/*
+ * Returns the amount of tokens in the str
+ */
+int countTokens(char* s) {
+    int i = 0;
+    int count = 0;
+    char lastChar = ' ';
+    
+    while(s[i] != '\0'){
+        if(lastChar == ' ' && s[i] != ' ') {
+            count++;
+        }
+        lastChar = s[i];
+        i++;
+    }
+    return count;
+}
+
+int countLines(FILE* f) {
+    int lines = 0;
+    int c;
+    
+    if (f == NULL) {
+        return 0;
+    }
+    while((c = fgetc(f)) != EOF) {
+        if (c == '\n') {
+            lines++;
+        }
+    }
+    fclose(f);
+    return lines;
+}
