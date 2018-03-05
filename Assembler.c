@@ -15,48 +15,55 @@
  */
 char **split(char s[]);
 int countTokens(char* s);
-int countLines(FILE*);
+int countLines(FILE* f);
 
 int main() {
     
-    char s[] = "Push: lw 1   2 3 #hello man! what is up am i right alkadsj alsdfkjads fljm i right";
-    int tokinstr = countTokens(s);
-    char **instr = split(s);
+    //char s[] = "Push: lw 1   2 3 #hello man! what is up am i right alkadsj alsdfkjads fljm i right";
+    //int tokinstr = countTokens(s);
+    char **instr;
     
-    //counts
-    int countLines = 0;
-    
-    //current line in the input
-    char** line;
-    
-    //our entire program array
-    char*** prgrm;
-    
-    int i = 0;
-    
-    //opcodes
-    char **opcodes = {"lw", "sw", "add", "nand", "beq", "jalr", "halt", "noop"};
+    int i=0;
+    int j=0;
     
     FILE *file;
     if ((file = fopen("run.a", "r"))) {
-        printf("True");
+        printf("True\n");
     }
     else {
         printf("false\n");
         printf("Couldn't find the file\n");
         return 0;
     }
+    
+    //counts
+    int lcount = 0;
+    
+    //current line in the input
+    char line[200];
+    
+    //num lines in the file
+    int flines = countLines(file);
+    
+    //our entire program array and allocate memory for the number of lines in the file
+    char*** prgrm = malloc(flines * sizeof(char**));
+    
+    printf("num lines: %i\n", flines);
+    
+    //opcodes
+    char *opcodes[] = {"lw", "sw", "add", "nand", "beq", "jalr", "halt", "noop"};
+    
     /*
      * Going through the file:
-     * Take lines in as
-     *
+     * Take lines in and add the instructions to the program array
      */
+    i=0;
     while(fgets(line, 255,  file)) {
-        countLines++;
-        prgrm[i] = strdup(line);
+        lcount++;
+        prgrm[i] = split(line);
+        
         i++;
     }
-    return 0;
 }
 
 
@@ -114,6 +121,8 @@ int countLines(FILE* f) {
             lines++;
         }
     }
-    fclose(f);
+    fseek(f, 0, SEEK_SET);
+    //fclose(f);
     return lines;
 }
+
