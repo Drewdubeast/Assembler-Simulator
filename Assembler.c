@@ -14,11 +14,14 @@
  * Function Prototypes
  */
 char **split(char s[]);
-int countTokens(char* s);
+int countTokens(char* s); //counts tokens in unsplit array, we should make one for a string array
 int countLines(FILE* f);
 int isop(char* c);
 int isDigit(char* c);
 
+/*
+ * MAIN FUNCTION
+ */
 int main() {
     
     //char s[] = "Push: lw 1   2 3 #hello man! what is up am i right alkadsj alsdfkjads fljm i right";
@@ -28,13 +31,11 @@ int main() {
     int i=0;
     int j=0;
     int k=0;
+    int x=0;
     
     FILE *file;
-    if ((file = fopen("run.a", "r"))) {
-        printf("True\n");
-    }
+    if ((file = fopen("run.a", "r"))) {}
     else {
-        printf("false\n");
         printf("Couldn't find the file\n");
         return 0;
     }
@@ -59,15 +60,11 @@ int main() {
     while(fgets(line, 255,  file)) {
         lcount++;
         prgrm[i] = split(line);
-        
         i++;
     }
-    
     /*
      * Next: FIRST PASS to replace labels with offsets
      * Second pass to actually pack the bits and check for formatting
-     *
-     *
      */
     i=0;
     j=0;
@@ -75,17 +72,34 @@ int main() {
     while(i < lcount) {
         //if it's not a number or an opcode, it must be a label
         //When we find a label, loop through the program and see where the label is
-        while(prgrm[i][j] != '\0') {
+        while(prgrm[i][j] != '\0')
             
             //if the token we are on is not an opcode or a digit, it must be a label
             if((isop(prgrm[i][j]) == 0) && (isDigit(prgrm[i][j]) == 0)) {
-                char* label = strdup(prgrm[i][j]); //set label equal to this token
+                char* label = prgrm[i][j]; //set label equal to this token
+                printf("%s", label);
+                int offset = 0;
+                //go down each line and each token in that line until we find the label
+                //increment the counter only every line
+                for(k=i; k<lcount; k++) {
+                    x=0;
+                    while(prgrm[k][x] != '\0') {
+                        if(strcmp(prgrm[k][x], label) == 0) {
+                            
+                            //change offset to string and put it in the array
+                            break;
+                        }
+                    }
+                    offset++;
+                    //replace label with actual value stored in offset.
+                    
+                }
                 
                 //loop through the rest of the program until label is found
-                for
-                    }
-        }
+            }
+        j++;
     }
+    i++;
 }
 
 
@@ -172,3 +186,4 @@ int isDigit(char* c) {
     }
     return 1;
 }
+
