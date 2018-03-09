@@ -14,7 +14,7 @@
  * Function Prototypes
  */
 char **split(char s[]);
-int countTokens(char* s); //counts tokens in unsplit array, we should make one for a string array
+int countTokens(char* s);
 int countLines(FILE* f);
 int isop(char* c);
 int isDigit(char* c);
@@ -24,15 +24,13 @@ int isDigit(char* c);
  */
 int main() {
     
-    //char s[] = "Push: lw 1   2 3 #hello man! what is up am i right alkadsj alsdfkjads fljm i right";
-    //int tokinstr = countTokens(s);
-    char **instr;
-    
+    //indices
     int i=0;
     int j=0;
     int k=0;
     int x=0;
     
+    //File handling
     FILE *file;
     if ((file = fopen("run.a", "r"))) {}
     else {
@@ -49,6 +47,14 @@ int main() {
     //num lines in the file
     int flines = countLines(file);
     
+    //label arrays
+    char** labelArray = malloc(flines * sizeof(char*));
+    
+    //printf("isop of sw: %d\n", isop("sw0"));
+    
+    //Token count array for each instruction
+    int tokensPerLine[flines];
+    
     //our entire program array and allocate memory for the number of lines in the file
     char*** prgrm = malloc(flines * sizeof(char**));
     
@@ -58,10 +64,14 @@ int main() {
      */
     i=0;
     while(fgets(line, 255,  file)) {
+        //TODO: check for white space first or label, if neither, then return
         lcount++;
+        tokensPerLine[i] = countTokens(line);
         prgrm[i] = split(line);
         i++;
     }
+    
+    printf("tokens per line %d", tokensPerLine[0]);
     /*
      * Next: FIRST PASS to replace labels with offsets
      * Second pass to actually pack the bits and check for formatting
@@ -69,37 +79,27 @@ int main() {
     i=0;
     j=0;
     k=0;
-    while(i < lcount) {
-        //if it's not a number or an opcode, it must be a label
-        //When we find a label, loop through the program and see where the label is
-        while(prgrm[i][j] != '\0')
-            
-            //if the token we are on is not an opcode or a digit, it must be a label
-            if((isop(prgrm[i][j]) == 0) && (isDigit(prgrm[i][j]) == 0)) {
-                char* label = prgrm[i][j]; //set label equal to this token
-                printf("%s", label);
-                int offset = 0;
-                //go down each line and each token in that line until we find the label
-                //increment the counter only every line
-                for(k=i; k<lcount; k++) {
-                    x=0;
-                    while(prgrm[k][x] != '\0') {
-                        if(strcmp(prgrm[k][x], label) == 0) {
-                            
-                            //change offset to string and put it in the array
-                            break;
-                        }
-                    }
-                    offset++;
-                    //replace label with actual value stored in offset.
-                    
-                }
-                
-                //loop through the rest of the program until label is found
-            }
-        j++;
+    
+    //First pass through, finding labels and storing indices
+    while(i<lcount) {
+        char* firstToken = prgrm[i][0];
+        if((isop(firstToken) == 0) && (isDigit(firstToken) == 0)) { //if it's a label
+            labelArray[i] = strdup(firstToken); //add label to label array
+        }
+        putchar('\n');
+        i++;
     }
-    i++;
+    
+    
+    /*
+     * SECOND PASS:
+     *
+     
+     
+     
+     *
+     *
+     */
 }
 
 
@@ -169,7 +169,7 @@ int isop(char* c) {
     char *opcodes[] = {"lw", "sw", "add", "nand", "beq", "jalr", "halt", "noop"};
     int i=0;
     for(i=0;i<7;i++) {
-        if(opcodes[i] == c) {
+        if(strcmp(opcodes[i],c) == 0) {
             return 1;
         }
     }
@@ -177,13 +177,12 @@ int isop(char* c) {
 }
 
 //checks if the given string is a digit or not
-int isDigit(char* c) {
+int isDigit(char* s) {
     int i=0;
-    for(i=0;i<strlen(c);i++) {
-        if(c[i] > '9' || c[i] < '0' ) {
+    for(i=0;i<strlen(s);i++) {
+        if(s[i] > '9' || s[i] < '0' ) {
             return 0;
         }
     }
     return 1;
 }
-
