@@ -9,6 +9,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <inttypes.h>
 
 /*
  * Function Prototypes
@@ -18,6 +19,8 @@ int countTokens(char* s);
 int countLines(FILE* f);
 int isop(char* c);
 int isDigit(char* c);
+int opcodepos(char** line, int len);
+void printBits(uint32_t pack);
 
 /*
  * MAIN FUNCTION
@@ -28,7 +31,6 @@ int main() {
     int i=0;
     int j=0;
     int k=0;
-    int x=0;
     
     //File handling
     FILE *file;
@@ -37,7 +39,7 @@ int main() {
         printf("Couldn't find the file\n");
         return 0;
     }
-    
+    //[31 UNUSED 25][24 OPCODE 22][21 rA 19][18 rB 16][15 Offset 0]
     //counts
     int lcount = 0;
     
@@ -67,11 +69,10 @@ int main() {
         //TODO: check for white space first or label, if neither, then return
         lcount++;
         tokensPerLine[i] = countTokens(line);
+        line[strlen(line)-1] = '\0';
         prgrm[i] = split(line);
         i++;
     }
-    
-    printf("tokens per line %d", tokensPerLine[0]);
     /*
      * Next: FIRST PASS to replace labels with offsets
      * Second pass to actually pack the bits and check for formatting
@@ -80,26 +81,167 @@ int main() {
     j=0;
     k=0;
     
-    //First pass through, finding labels and storing indices
-    while(i<lcount) {
+    /*
+     * FIRST PASS
+     */
+    for(i=0;i<lcount;i++) {
         char* firstToken = prgrm[i][0];
         if((isop(firstToken) == 0) && (isDigit(firstToken) == 0)) { //if it's a label
             labelArray[i] = strdup(firstToken); //add label to label array
         }
-        putchar('\n');
-        i++;
+        else {
+            labelArray[i] = "";
+            putchar('\n');
+        }
     }
-    
-    
     /*
-     * SECOND PASS:
-     *
-     
-     
-     
-     *
+     * SECOND PASS
+     * -Go through, look at the
      *
      */
+    i=0;
+    for(i=0;i<lcount;i++) {
+        //uint32_t that gets filled later, printed, etc.
+        uint32_t instruction = 0;
+        //We'll need to store everthing in individual uints and shift them into position.
+        //For I types, we will have: opcode r0 r1 offset
+        
+        //go through first two tokens in each line and see where/if there's an opcode
+        if(isop(prgrm[i][0]) == 1 || isop(prgrm[i][1]) == 1)  { //correct if
+            int opcpos = opcodepos(prgrm[i], tokensPerLine[i]);
+            //I-TYPES
+            if(strcmp(prgrm[i][opcpos],"lw") == 0) {
+                uint32_t lw_opcode = 2;
+                uint32_t r0;
+                uint32_t r1;
+                uint16_t offset = 0;
+                // we want to make sure there are two registers and a label/number after
+                
+                //next two fields must be register numbers
+                if(isDigit(prgrm[i][opcpos+1]) == 1 && isDigit(prgrm[i][opcpos+2]) == 1) {
+                    //set register ints
+                    r0 = atoi(prgrm[i][opcpos+1]);
+                    printf("r0: %" PRIu32 "\n", r0);
+                    r1 = atoi(prgrm[i][opcpos+2]);
+                    printf("r1: %" PRIu32 "\n", r1);
+                }
+                else {
+                    printf("Illegal registers for I-Type instruction in line: %i\n\n\nRequired: [opcode] [int] [int] [int]\n", i);
+                    return 0;
+                }
+                
+                //if label position is a digit
+                if(isDigit(prgrm[i][opcpos+3]) == 1) {// || isop(prgrm[i][opcpos+3]) == 0) {
+                    offset = atoi(prgrm[i][opcpos+3]);
+                }
+                //if label position isn't an opcode and isn't a digit
+                else if (isop(prgrm[i][opcpos+3]) == 0) {
+                    for(j=0;j<flines;j++) {
+                        //go through label array and see if we can find a match, take that index
+                        if(strcmp(prgrm[i][opcpos+3],labelArray[j]) == 0) {
+                            offset = j-(i+1);
+                            printf("Offset: %i\n", offset);
+                            //prgrm[i][opcpos+3] = j-i;
+                        }
+                    }
+                    if(offset == 0) {
+                        printf("Can't find destination label: %s\n", prgrm[i][opcpos+3]);
+                        return 0;
+                    }
+                }
+                else {
+                    printf("Error in line: %i\n", i);
+                    return 0;
+                }
+                instruction = (lw_opcode<<22)|instruction;
+                printBits(instruction);
+                putchar('\n');
+                instruction = (r0<<19)|instruction;
+                printBits(instruction);
+                putchar('\n');
+                instruction = (r1<<16)|instruction;
+                printBits(instruction);
+                putchar('\n');
+                instruction = (offset)|instruction;
+                printBits(instruction);
+                putchar('\n');
+                
+                //printing here, needs inttypes.h
+                printf("%" PRIu32 "\n", instruction);
+                printBits(instruction);
+                
+                // [31 UNUSED 25][24 OPCODE 22][21 rA 19][18 rB 16][15 Offset 0]
+            }
+            else if(strcmp(prgrm[i][opcpos],"sw") == 0) {
+                uint32_t lw_opcode = 3;
+                uint32_t r0;
+                uint32_t r1;
+                uint16_t offset = 0;
+                // we want to make sure there are two registers and a label/number after
+                
+                //next two fields must be register numbers
+                if(isDigit(prgrm[i][opcpos+1]) == 1 && isDigit(prgrm[i][opcpos+2]) == 1) {
+                    //set register ints
+                    r0 = atoi(prgrm[i][opcpos+1]);
+                    printf("r0: %" PRIu32 "\n", r0);
+                    r1 = atoi(prgrm[i][opcpos+2]);
+                    printf("r1: %" PRIu32 "\n", r1);
+                }
+                else {
+                    printf("Illegal registers for I-Type instruction in line: %i\n\n\nRequired: [opcode] [int] [int] [int]\n", i);
+                    return 0;
+                }
+                
+                //if label position is a digit
+                if(isDigit(prgrm[i][opcpos+3]) == 1) {// || isop(prgrm[i][opcpos+3]) == 0) {
+                    offset = atoi(prgrm[i][opcpos+3]);
+                }
+                //if label position isn't an opcode and isn't a digit
+                else if (isop(prgrm[i][opcpos+3]) == 0) {
+                    for(j=0;j<flines;j++) {
+                        //go through label array and see if we can find a match, take that index
+                        if(strcmp(prgrm[i][opcpos+3],labelArray[j]) == 0) {
+                            offset = j-(i+1);
+                            printf("j: %i\ni: %i\n",j,i);
+                            printf("Offset: %" PRIu16 "\n\n", offset);
+                            //prgrm[i][opcpos+3] = j-i;
+                        }
+                    }
+                    if(offset == 0) {
+                        printf("Can't find destination label: %s\n", prgrm[i][opcpos+3]);
+                        return 0;
+                    }
+                }
+                else {
+                    printf("Error in line: %i\n", i);
+                    return 0;
+                }
+                instruction = (lw_opcode<<22)|instruction;
+                printBits(instruction);
+                putchar('\n');
+                instruction = (r0<<19)|instruction;
+                printBits(instruction);
+                putchar('\n');
+                instruction = (r1<<16)|instruction;
+                printBits(instruction);
+                putchar('\n');
+                instruction = (offset)|instruction;
+                printBits(instruction);
+                putchar('\n');
+                
+                //printing here, needs inttypes.h
+                printf("%" PRIu32 "\n", instruction);
+                printBits(instruction);
+                
+                // [31 UNUSED 25][24 OPCODE 22][21 rA 19][18 rB 16][15 Offset 0]
+            }
+        }
+        else {
+            printf("No opcode found in correct position for line: %i", i);
+            return 0;
+        }
+        //if label position is something else (maybe an opcode?)
+    }
 }
 
 
@@ -185,4 +327,28 @@ int isDigit(char* s) {
         }
     }
     return 1;
+}
+
+//returns the first opcode position
+int opcodepos(char** line, int len) {
+    int i = 0;
+    while(i<len) {
+        if(isop(line[i]) == 1) {
+            return i;
+        }
+        i++;
+    }
+    return -1;
+}
+void printBits(uint32_t pack) {
+    int i;
+    
+    for(i=31;i>0;i--) {
+        if(((pack>>i)&1) == 1) {
+            printf("1");
+        }
+        else {
+            printf("0");
+        }
+    }
 }
