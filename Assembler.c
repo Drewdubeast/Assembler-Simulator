@@ -204,6 +204,7 @@ int main() {
                             offset = j-(i+1);
                             printf("j: %i\ni: %i\n",j,i);
                             printf("Offset: %" PRIu16 "\n\n", offset);
+                            printBits(offset);
                             //prgrm[i][opcpos+3] = j-i;
                         }
                     }
@@ -342,13 +343,16 @@ int opcodepos(char** line, int len) {
 }
 void printBits(uint32_t pack) {
     int i;
+    uint32_t temp = pack;
     
-    for(i=31;i>0;i--) {
-        if(((pack>>i)&1) == 1) {
+    for(i=31;i>=0;i--) {
+        if(((temp>>i)&1) == 1) {
             printf("1");
         }
         else {
             printf("0");
         }
     }
+    putchar('\n');
 }
+
