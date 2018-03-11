@@ -45,7 +45,6 @@ int main(int argc, char **argv) {
     //run-mode
     bool fileout = false;
     
-    //printf("isDigit: -9: %i\n", isDigit("-9 "));
     //File handling
     FILE *file = NULL;
     FILE *out = NULL;
@@ -308,6 +307,7 @@ int main(int argc, char **argv) {
         for(j=0;j<tokensPerLine[i];j++) {
             free(prgrm[i][j]);
         }
+        free(prgrm[i]);
     }
     free(labelArray);
 }
@@ -440,4 +440,3 @@ void printBits(uint32_t pack) {
     }
     putchar('\n');
 }
-
