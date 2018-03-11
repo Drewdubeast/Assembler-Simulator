@@ -2,14 +2,14 @@
 //  main.c
 //  Assembler-Simulator-XP
 //
-//  Created by Drew Wilken on 3/1/18.
+//  Created by Drew Wilken and Nathan on 3/1/18.
 //  Copyright © 2018 Drew Wilken and Nathan Taylor. All rights reserved.
 //
 
 
 /*
  * TO ADD:
- * -allow for two input example
+ *
  *
  *
  */
@@ -272,20 +272,24 @@ int main(int argc, char **argv) {
             if(type == 'I') {
                 //[31 UNUSED 25][24 OPCODE 22][21 rA 19][18 rB 16][15 Offset 0]
                 instruction = (opcode<<22)|(r0<<19)|(r1<<16)|(offset);
+                //printBits(instruction);
                 fprintf(fileout == false ? stdout : out, "%" PRIu32 "\n", instruction);
             }
             else if (type == 'R') {
                 // [31 UNUSED 25][24 OPCODE 22][21 rA 19][18 rB 16][15 unused 3][2 dstReg 0]
                 instruction = (opcode<<22)|(r0<<19)|(r1<<16)|(r_dst);
+                //printBits(instruction);
                 fprintf(fileout == false ? stdout : out, "%" PRIu32 "\n", instruction);
             }
             else if (type == 'J') {
                 instruction = (opcode<<25)|(r0<<19)|(r1<<16);
+                //printBits(instruction);
                 fprintf(fileout == false ? stdout : out, "%" PRIu32 "\n", instruction);
             }
             else if (type == 'O') {
                 // [31 UNUSED 25][24 OPCODE 22][21 UNUSED 0]
                 instruction = opcode<<22;
+                //printBits(instruction);
                 fprintf(fileout == false ? stdout : out, "%" PRIu32 "\n", instruction);
             }
         }
@@ -293,8 +297,19 @@ int main(int argc, char **argv) {
             printf("No opcode found in correct position for line: %i\n", i+1);
             return 0;
         }
-        //if label position is something else (maybe an opcode?)
     }
+    fclose(file);
+    fclose(out);
+    
+    /*
+     * FREEING MEMORY
+     */
+    for(i=0;i<lcount;i++) {
+        for(j=0;j<tokensPerLine[i];j++) {
+            free(prgrm[i][j]);
+        }
+    }
+    free(labelArray);
 }
 
 
@@ -425,3 +440,4 @@ void printBits(uint32_t pack) {
     }
     putchar('\n');
 }
+
