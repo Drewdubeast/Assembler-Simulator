@@ -98,33 +98,34 @@ int main() {
     }
     /*
      * SECOND PASS
-     * -Go through, look at the
-     *
      */
     for(i=0;i<lcount;i++) {
-        //uint32_t that gets filled later, printed, etc.
+        uint32_t opcode = -1;
+        uint32_t r0 = 0;
+        uint32_t r1 = 0;
+        uint32_t r_dst = 0;
+        uint16_t offset = 0;
         uint32_t instruction = 0;
-        //We'll need to store everthing in individual uints and shift them into position.
-        //For I types, we will have: opcode r0 r1 offset
+        char type = ' ';
         
         //go through first two tokens in each line and see where/if there's an opcode
         if(isop(prgrm[i][0]) == 1 || isop(prgrm[i][1]) == 1)  { //correct if
             int opcpos = opcodepos(prgrm[i], tokensPerLine[i]);
-            //I-TYPES
+            
+            
+            /*
+             * I-TYPE INSTRUCTIONS
+             */
             if(strcmp(prgrm[i][opcpos],"lw") == 0) {
-                uint32_t lw_opcode = 2;
-                uint32_t r0;
-                uint32_t r1;
-                uint16_t offset = 0;
-                // we want to make sure there are two registers and a label/number after
+                
+                type = 'I';
+                opcode = 2;
                 
                 //next two fields must be register numbers
                 if(isRegister(prgrm[i][opcpos+1]) == 1 && isRegister(prgrm[i][opcpos+2]) == 1) {
                     //set register ints
                     r0 = atoi(prgrm[i][opcpos+1]);
-                    printf("r0: %" PRIu32 "\n", r0);
                     r1 = atoi(prgrm[i][opcpos+2]);
-                    printf("r1: %" PRIu32 "\n", r1);
                 }
                 else {
                     printf("Illegal registers for I-Type instruction in line: %i\n\n\nRequired: [opcode] [int] [int] [int]\n", i);
@@ -139,7 +140,6 @@ int main() {
                         return 0;
                     }
                     offset = offset_temp;
-                    printf("OFFSET: %" PRIu16"\nLine: %i\n", offset,i);
                 }
                 //if label position isn't an opcode and isn't a digit
                 else if (isop(prgrm[i][opcpos+3]) == 0) {
@@ -147,8 +147,6 @@ int main() {
                         //go through label array and see if we can find a match, take that index
                         if(strcmp(prgrm[i][opcpos+3],labelArray[j]) == 0) {
                             offset = j-(i+1);
-                            printf("Offset: %i\n", offset);
-                            //prgrm[i][opcpos+3] = j-i;
                         }
                     }
                     if(offset == 0) {
@@ -160,37 +158,17 @@ int main() {
                     printf("Error in line: %i\n", i);
                     return 0;
                 }
-                instruction = (lw_opcode<<22)|instruction;
-                printBits(instruction);
-                putchar('\n');
-                instruction = (r0<<19)|instruction;
-                printBits(instruction);
-                putchar('\n');
-                instruction = (r1<<16)|instruction;
-                printBits(instruction);
-                putchar('\n');
-                instruction = (offset)|instruction;
-                printBits(instruction);
-                putchar('\n');
-                
-                //printing here, needs inttypes.h
-                printf("%" PRIu32 "\n", instruction);
-                printBits(instruction);
             }
             else if(strcmp(prgrm[i][opcpos],"sw") == 0) {
-                uint32_t lw_opcode = 3;
-                uint32_t r0;
-                uint32_t r1;
-                uint16_t offset = 0;
-                // we want to make sure there are two registers and a label/number after
+                
+                type = 'I';
+                opcode = 3;
                 
                 //next two fields must be register numbers
                 if(isRegister(prgrm[i][opcpos+1]) == 1 && isRegister(prgrm[i][opcpos+2]) == 1) {
                     //set register ints
                     r0 = atoi(prgrm[i][opcpos+1]);
-                    printf("r0: %" PRIu32 "\n", r0);
                     r1 = atoi(prgrm[i][opcpos+2]);
-                    printf("r1: %" PRIu32 "\n", r1);
                 }
                 else {
                     printf("Illegal registers for I-Type instruction in line: %i\n\n\nRequired: [opcode] [int] [int] [int]\n", i);
@@ -205,7 +183,6 @@ int main() {
                         return 0;
                     }
                     offset = offset_temp;
-                    printf("OFFSET: %" PRIu16"\nLine: %i\n", offset,i);
                 }
                 //if label position isn't an opcode and isn't a digit
                 else if (isop(prgrm[i][opcpos+3]) == 0) {
@@ -213,8 +190,6 @@ int main() {
                         //go through label array and see if we can find a match, take that index
                         if(strcmp(prgrm[i][opcpos+3],labelArray[j]) == 0) {
                             offset = j-(i+1);
-                            printf("j: %i\ni: %i\n",j,i);
-                            printf("Offset: %" PRIu16 "\n\n", offset);
                             printBits(offset);
                         }
                     }
@@ -227,36 +202,61 @@ int main() {
                     printf("Error in line: %i\n", i);
                     return 0;
                 }
-                instruction = (lw_opcode<<22)|instruction;
-                printBits(instruction);
-                putchar('\n');
-                instruction = (r0<<19)|instruction;
-                printBits(instruction);
-                putchar('\n');
-                instruction = (r1<<16)|instruction;
-                printBits(instruction);
-                putchar('\n');
-                instruction = (offset)|instruction;
-                printBits(instruction);
-                putchar('\n');
+            }
+            else if(strcmp(prgrm[i][opcpos],"beq") == 0) {
                 
-                //printing here, needs inttypes.h
-                printf("%" PRIu32 "\n", instruction);
-                printBits(instruction);
+                type = 'I';
+                opcode = 6;
                 
-                // [31 UNUSED 25][24 OPCODE 22][21 rA 19][18 rB 16][15 Offset 0]
+                //next two fields must be register numbers
+                if(isRegister(prgrm[i][opcpos+1]) == 1 && isRegister(prgrm[i][opcpos+2]) == 1) {
+                    //set register ints
+                    r0 = atoi(prgrm[i][opcpos+1]);
+                    r1 = atoi(prgrm[i][opcpos+2]);
+                }
+                else {
+                    printf("Illegal registers for I-Type instruction in line: %i\n\n\nRequired: [opcode] [int] [int] [int]\n", i);
+                    return 0;
+                }
+                
+                //if label position is a digit
+                if(isDigit(prgrm[i][opcpos+3]) == 1) {//
+                    int offset_temp = atoi(prgrm[i][opcpos+3]);
+                    if(offset_temp>65535) {
+                        printf("Offset value on line %i is incorrect!\n\nFound: %i\nRequired: A value less than 65535\n", i, offset_temp);
+                        return 0;
+                    }
+                    offset = offset_temp;
+                }
+                //if label position isn't an opcode and isn't a digit
+                else if (isop(prgrm[i][opcpos+3]) == 0) {
+                    for(j=0;j<flines;j++) {
+                        //go through label array and see if we can find a match, take that index
+                        if(strcmp(prgrm[i][opcpos+3],labelArray[j]) == 0) {
+                            offset = j-(i+1);
+                            printBits(offset);
+                        }
+                    }
+                    if(offset == 0) {
+                        printf("Can't find destination label: %s\n", prgrm[i][opcpos+3]);
+                        return 0;
+                    }
+                }
+                else {
+                    printf("Error in line: %i\n", i);
+                    return 0;
+                }
             }
             
             
             
-            //R-Type
-            if(strcmp(prgrm[i][opcpos], "add") == 0)
+            /*
+             * R-TYPES
+             */
+            else if(strcmp(prgrm[i][opcpos], "add") == 0)
             {
-                printf("===========ADD=========\n");
-                uint32_t add_opcode = 0;
-                uint32_t r_dst;
-                uint32_t r0;
-                uint32_t r1;
+                type = 'R';
+                opcode = 0;
                 
                 if((isRegister(prgrm[i][opcpos+1]) == 1) && (isRegister(prgrm[i][opcpos+2]) == 1) && (isRegister(prgrm[i][opcpos+3]) == 1)) {
                     r_dst = atoi(prgrm[i][opcpos+1]);
@@ -267,30 +267,10 @@ int main() {
                     printf("Registers given are incorrect on line %i\n",  i);
                     return 0;
                 }
-                // [31 UNUSED 25][24 OPCODE 22][21 rA 19][18 rB 16][15 unused 3][2 dstReg 0]
-                instruction = (add_opcode<<22)|instruction;
-                printBits(instruction);
-                putchar('\n');
-                instruction = (r0<<19)|instruction;
-                printBits(instruction);
-                putchar('\n');
-                instruction = (r1<<16)|instruction;
-                printBits(instruction);
-                putchar('\n');
-                instruction = (r_dst)|instruction;
-                printBits(instruction);
-                putchar('\n');
-                
-                //printing here, needs inttypes.h
-                printf("%" PRIu32 "\n", instruction);
-                printBits(instruction);
             }
             else if ((strcmp(prgrm[i][opcpos], "nand") == 0)) {
-                printf("NAAAAAAND\n");
-                uint32_t nand_opcode = 1;
-                uint32_t r_dst;
-                uint32_t r0;
-                uint32_t r1;
+                type = 'I';
+                opcode = 1;
                 
                 if((isRegister(prgrm[i][opcpos+1]) == 1) && (isRegister(prgrm[i][opcpos+2]) == 1) && (isRegister(prgrm[i][opcpos+3]) == 1)) {
                     r_dst = atoi(prgrm[i][opcpos+1]);
@@ -301,23 +281,56 @@ int main() {
                     printf("Registers given are incorrect on line %i\n",  i);
                     return 0;
                 }
-                // [31 UNUSED 25][24 OPCODE 22][21 rA 19][18 rB 16][15 unused 3][2 dstReg 0]
-                instruction = (nand_opcode<<22)|instruction;
-                printBits(instruction);
-                putchar('\n');
-                instruction = (r0<<19)|instruction;
-                printBits(instruction);
-                putchar('\n');
-                instruction = (r1<<16)|instruction;
-                printBits(instruction);
-                putchar('\n');
-                instruction = (r_dst)|instruction;
-                printBits(instruction);
-                putchar('\n');
+            }
+            
+            
+            /*
+             * O-Type Instructions
+             */
+            else if (strcmp(prgrm[i][opcpos], "halt")) {
+                opcode = 6;
+                type = 'O';
+            }
+            else if (strcmp(prgrm[i][opcpos], "noop")) {
+                opcode = 7;
+                type = 'O';
+            }
+            
+            /*
+             * J-Type Instructions
+             */
+            else if(strcmp(prgrm[i][opcpos], "jalr") == 0) {
+                opcode = 5;
+                type = 'J';
                 
-                //printing here, needs inttypes.h
-                printf("%" PRIu32 "\n", instruction);
+                if(isRegister(prgrm[i][opcpos+1]) == 1 && isRegister(prgrm[i][opcpos+2]) == 1) {
+                    r0 = atoi(prgrm[i][opcpos+1]);
+                    r1 = atoi(prgrm[i][opcpos+2]);
+                }
+                else {
+                    printf("Registers are incorrect on line: %i\n", i);
+                }
+            }
+            
+            /*
+             * PACKING
+             */
+            if(type == 'I') {
+                //[31 UNUSED 25][24 OPCODE 22][21 rA 19][18 rB 16][15 Offset 0]
+                instruction = (opcode<<22)|(r0<<19)|(r1<<16)|(offset);
                 printBits(instruction);
+            }
+            else if (type == 'R') {
+                // [31 UNUSED 25][24 OPCODE 22][21 rA 19][18 rB 16][15 unused 3][2 dstReg 0]
+                instruction = (opcode<<22)|(r0<<19)|(r1<<16)|(r_dst);
+                printBits(instruction);
+            }
+            else if (type == 'J') {
+                instruction = (opcode<<25)|(r0<<19)|(r1<<16);
+            }
+            else if (type == 'O') {
+                // [31 UNUSED 25][24 OPCODE 22][21 UNUSED 0]
+                instruction = opcode<<22;
             }
         }
         else {
