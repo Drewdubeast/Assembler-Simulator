@@ -6,10 +6,19 @@
 //  Copyright © 2018 Drew Wilken and Nathan Taylor. All rights reserved.
 //
 
+
+/*
+ * TO ADD:
+ * -allow for two input example
+ *
+ *
+ */
+
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 #include <inttypes.h>
+#include <stdbool.h>
 
 /*
  * Function Prototypes
@@ -26,20 +35,49 @@ void printBits(uint32_t pack);
 /*
  * MAIN FUNCTION
  */
-int main() {
+int main(int argc, char **argv) {
     
     //indices
     int i=0;
     int j=0;
     int k=0;
     
+    //run-mode
+    bool fileout = false;
+    
     //printf("isDigit: -9: %i\n", isDigit("-9 "));
     //File handling
-    FILE *file;
-    if ((file = fopen("run.a", "r"))) {}
-    else {
-        printf("Couldn't find the file\n");
+    FILE *file = NULL;
+    FILE *out = NULL;
+    
+    argc = 2;
+    argv[1] = "run.a";
+    
+    //file handling
+    if (argc == 1) {
+        printf("No file input!\n");
         return 0;
+    }
+    else if (argc == 2) {
+        fileout = false;
+        if (!(file = fopen(argv[1], "r"))) {
+            printf("Couldn't find the file: %s\n", argv[1]);
+            return 0;
+        }
+    }
+    else if (argc == 3) {
+        fileout = true;
+        if (!(file = fopen(argv[1], "r"))) {
+            printf("Couldn't find the file: %s\n", argv[1]);
+            return 0;
+        }
+        if (!(out = fopen(argv[2], "w+"))) {
+            printf("Couldn't find the file: %s\n", argv[2]);
+            return 0;
+        }
+    }
+    else {
+        printf("Too many input arguments! Must have a maximum of two.\nEnter one file name argument to print output to stdout\nEnter two file names to output to second file.\n");
     }
     //[31 UNUSED 25][24 OPCODE 22][21 rA 19][18 rB 16][15 Offset 0]
     //counts
@@ -53,8 +91,6 @@ int main() {
     
     //label arrays
     char** labelArray = malloc(flines * sizeof(char*));
-    
-    //printf("isop of sw: %d\n", isop("sw0"));
     
     //Token count array for each instruction
     int tokensPerLine[flines];
@@ -73,6 +109,7 @@ int main() {
         tokensPerLine[i] = countTokens(line);
         line[strlen(line)-1] = '\0';
         prgrm[i] = split(line);
+        labelArray[i] = "";
         i++;
     }
     /*
@@ -89,6 +126,12 @@ int main() {
     for(i=0;i<lcount;i++) {
         char* firstToken = prgrm[i][0];
         if((isop(firstToken) == 0) && (isDigit(firstToken) == 0)) { //if it's a label
+            for(j =0; j<lcount;j++) {
+                if(strcmp(firstToken,labelArray[j]) == 0) {
+                    printf("Duplicate label: %s\n in line: %i", firstToken, i+1);
+                    return 0;
+                }
+            }
             labelArray[i] = strdup(firstToken); //add label to label array
         }
         else {
@@ -116,10 +159,17 @@ int main() {
             /*
              * I-TYPE INSTRUCTIONS
              */
-            if(strcmp(prgrm[i][opcpos],"lw") == 0) {
-                
+            if(strcmp(prgrm[i][opcpos],"lw") == 0 || strcmp(prgrm[i][opcpos],"sw") == 0 || strcmp(prgrm[i][opcpos],"beq") == 0 ) {
+                if(strcmp(prgrm[i][opcpos],"lw") == 0) {
+                    opcode = 2;
+                }
+                else if(strcmp(prgrm[i][opcpos],"sw")){
+                    opcode = 3;
+                }
+                else { //beq
+                    opcode = 4;
+                }
                 type = 'I';
-                opcode = 2;
                 
                 //next two fields must be register numbers
                 if(isRegister(prgrm[i][opcpos+1]) == 1 && isRegister(prgrm[i][opcpos+2]) == 1) {
@@ -128,7 +178,7 @@ int main() {
                     r1 = atoi(prgrm[i][opcpos+2]);
                 }
                 else {
-                    printf("Illegal registers for I-Type instruction in line: %i\n\n\nRequired: [opcode] [int] [int] [int]\n", i);
+                    printf("Illegal registers for I-Type instruction in line: %i\n\n\nRequired: [opcode] [int] [int] [int]\n", i+1);
                     return 0;
                 }
                 
@@ -136,7 +186,7 @@ int main() {
                 if(isDigit(prgrm[i][opcpos+3]) == 1) {//
                     int offset_temp = atoi(prgrm[i][opcpos+3]);
                     if(offset_temp>65535) {
-                        printf("Offset value on line %i is incorrect!\n\nFound: %i\nRequired: A value less than 65535\n", i, offset_temp);
+                        printf("Offset value on line %i is incorrect!\n\nFound: %i\nRequired: A value less than 65535\n", i+1, offset_temp);
                         return 0;
                     }
                     offset = offset_temp;
@@ -150,100 +200,12 @@ int main() {
                         }
                     }
                     if(offset == 0) {
-                        printf("Can't find destination label: %s\n", prgrm[i][opcpos+3]);
+                        printf("Can't find destination label: %s in line: %i\n", prgrm[i][opcpos+3], i+1);
                         return 0;
                     }
                 }
                 else {
-                    printf("Error in line: %i\n", i);
-                    return 0;
-                }
-            }
-            else if(strcmp(prgrm[i][opcpos],"sw") == 0) {
-                
-                type = 'I';
-                opcode = 3;
-                
-                //next two fields must be register numbers
-                if(isRegister(prgrm[i][opcpos+1]) == 1 && isRegister(prgrm[i][opcpos+2]) == 1) {
-                    //set register ints
-                    r0 = atoi(prgrm[i][opcpos+1]);
-                    r1 = atoi(prgrm[i][opcpos+2]);
-                }
-                else {
-                    printf("Illegal registers for I-Type instruction in line: %i\n\n\nRequired: [opcode] [int] [int] [int]\n", i);
-                    return 0;
-                }
-                
-                //if label position is a digit
-                if(isDigit(prgrm[i][opcpos+3]) == 1) {//
-                    int offset_temp = atoi(prgrm[i][opcpos+3]);
-                    if(offset_temp>65535) {
-                        printf("Offset value on line %i is incorrect!\n\nFound: %i\nRequired: A value less than 65535\n", i, offset_temp);
-                        return 0;
-                    }
-                    offset = offset_temp;
-                }
-                //if label position isn't an opcode and isn't a digit
-                else if (isop(prgrm[i][opcpos+3]) == 0) {
-                    for(j=0;j<flines;j++) {
-                        //go through label array and see if we can find a match, take that index
-                        if(strcmp(prgrm[i][opcpos+3],labelArray[j]) == 0) {
-                            offset = j-(i+1);
-                            printBits(offset);
-                        }
-                    }
-                    if(offset == 0) {
-                        printf("Can't find destination label: %s\n", prgrm[i][opcpos+3]);
-                        return 0;
-                    }
-                }
-                else {
-                    printf("Error in line: %i\n", i);
-                    return 0;
-                }
-            }
-            else if(strcmp(prgrm[i][opcpos],"beq") == 0) {
-                
-                type = 'I';
-                opcode = 6;
-                
-                //next two fields must be register numbers
-                if(isRegister(prgrm[i][opcpos+1]) == 1 && isRegister(prgrm[i][opcpos+2]) == 1) {
-                    //set register ints
-                    r0 = atoi(prgrm[i][opcpos+1]);
-                    r1 = atoi(prgrm[i][opcpos+2]);
-                }
-                else {
-                    printf("Illegal registers for I-Type instruction in line: %i\n\n\nRequired: [opcode] [int] [int] [int]\n", i);
-                    return 0;
-                }
-                
-                //if label position is a digit
-                if(isDigit(prgrm[i][opcpos+3]) == 1) {//
-                    int offset_temp = atoi(prgrm[i][opcpos+3]);
-                    if(offset_temp>65535) {
-                        printf("Offset value on line %i is incorrect!\n\nFound: %i\nRequired: A value less than 65535\n", i, offset_temp);
-                        return 0;
-                    }
-                    offset = offset_temp;
-                }
-                //if label position isn't an opcode and isn't a digit
-                else if (isop(prgrm[i][opcpos+3]) == 0) {
-                    for(j=0;j<flines;j++) {
-                        //go through label array and see if we can find a match, take that index
-                        if(strcmp(prgrm[i][opcpos+3],labelArray[j]) == 0) {
-                            offset = j-(i+1);
-                            printBits(offset);
-                        }
-                    }
-                    if(offset == 0) {
-                        printf("Can't find destination label: %s\n", prgrm[i][opcpos+3]);
-                        return 0;
-                    }
-                }
-                else {
-                    printf("Error in line: %i\n", i);
+                    printf("Error in line: %i\n", i+1);
                     return 0;
                 }
             }
@@ -253,10 +215,15 @@ int main() {
             /*
              * R-TYPES
              */
-            else if(strcmp(prgrm[i][opcpos], "add") == 0)
+            else if(strcmp(prgrm[i][opcpos], "add") == 0 || strcmp(prgrm[i][opcpos], "nand") == 0)
             {
+                if (strcmp(prgrm[i][opcpos], "add") == 0) {
+                    opcode = 0;
+                }
+                else {
+                    opcode = 1;
+                }
                 type = 'R';
-                opcode = 0;
                 
                 if((isRegister(prgrm[i][opcpos+1]) == 1) && (isRegister(prgrm[i][opcpos+2]) == 1) && (isRegister(prgrm[i][opcpos+3]) == 1)) {
                     r_dst = atoi(prgrm[i][opcpos+1]);
@@ -264,21 +231,7 @@ int main() {
                     r1 = atoi(prgrm[i][opcpos+3]);
                 }
                 else {
-                    printf("Registers given are incorrect on line %i\n",  i);
-                    return 0;
-                }
-            }
-            else if ((strcmp(prgrm[i][opcpos], "nand") == 0)) {
-                type = 'I';
-                opcode = 1;
-                
-                if((isRegister(prgrm[i][opcpos+1]) == 1) && (isRegister(prgrm[i][opcpos+2]) == 1) && (isRegister(prgrm[i][opcpos+3]) == 1)) {
-                    r_dst = atoi(prgrm[i][opcpos+1]);
-                    r0 = atoi(prgrm[i][opcpos+2]);
-                    r1 = atoi(prgrm[i][opcpos+3]);
-                }
-                else {
-                    printf("Registers given are incorrect on line %i\n",  i);
+                    printf("Registers given are incorrect on line %i\n",  i+1);
                     return 0;
                 }
             }
@@ -287,12 +240,13 @@ int main() {
             /*
              * O-Type Instructions
              */
-            else if (strcmp(prgrm[i][opcpos], "halt")) {
-                opcode = 6;
-                type = 'O';
-            }
-            else if (strcmp(prgrm[i][opcpos], "noop")) {
-                opcode = 7;
+            else if (strcmp(prgrm[i][opcpos], "halt") == 0 || strcmp(prgrm[i][opcpos], "noop") == 0) {
+                if (strcmp(prgrm[i][opcpos], "halt") == 0) {
+                    opcode = 6;
+                }
+                else {
+                    opcode = 7;
+                }
                 type = 'O';
             }
             
@@ -308,7 +262,7 @@ int main() {
                     r1 = atoi(prgrm[i][opcpos+2]);
                 }
                 else {
-                    printf("Registers are incorrect on line: %i\n", i);
+                    printf("Registers are incorrect on line: %i\n", i+1);
                 }
             }
             
@@ -318,23 +272,25 @@ int main() {
             if(type == 'I') {
                 //[31 UNUSED 25][24 OPCODE 22][21 rA 19][18 rB 16][15 Offset 0]
                 instruction = (opcode<<22)|(r0<<19)|(r1<<16)|(offset);
-                printBits(instruction);
+                fprintf(fileout == false ? stdout : out, "%" PRIu32 "\n", instruction);
             }
             else if (type == 'R') {
                 // [31 UNUSED 25][24 OPCODE 22][21 rA 19][18 rB 16][15 unused 3][2 dstReg 0]
                 instruction = (opcode<<22)|(r0<<19)|(r1<<16)|(r_dst);
-                printBits(instruction);
+                fprintf(fileout == false ? stdout : out, "%" PRIu32 "\n", instruction);
             }
             else if (type == 'J') {
                 instruction = (opcode<<25)|(r0<<19)|(r1<<16);
+                fprintf(fileout == false ? stdout : out, "%" PRIu32 "\n", instruction);
             }
             else if (type == 'O') {
                 // [31 UNUSED 25][24 OPCODE 22][21 UNUSED 0]
                 instruction = opcode<<22;
+                fprintf(fileout == false ? stdout : out, "%" PRIu32 "\n", instruction);
             }
         }
         else {
-            printf("No opcode found in correct position for line: %i", i);
+            printf("No opcode found in correct position for line: %i\n", i+1);
             return 0;
         }
         //if label position is something else (maybe an opcode?)
@@ -407,7 +363,7 @@ int isop(char* s) {
     //opcodes
     char *opcodes[] = {"lw", "sw", "add", "nand", "beq", "jalr", "halt", "noop"};
     int i=0;
-    for(i=0;i<7;i++) {
+    for(i=0;i<=7;i++) {
         if(strcmp(opcodes[i],s) == 0) {
             return 1;
         }
