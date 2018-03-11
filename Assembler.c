@@ -17,8 +17,9 @@
 char **split(char s[]);
 int countTokens(char* s);
 int countLines(FILE* f);
-int isop(char* c);
-int isDigit(char* c);
+int isop(char* s);
+int isDigit(char* s);
+int isRegister(char* s);
 int opcodepos(char** line, int len);
 void printBits(uint32_t pack);
 
@@ -32,6 +33,7 @@ int main() {
     int j=0;
     int k=0;
     
+    //printf("isDigit: -9: %i\n", isDigit("-9 "));
     //File handling
     FILE *file;
     if ((file = fopen("run.a", "r"))) {}
@@ -99,7 +101,6 @@ int main() {
      * -Go through, look at the
      *
      */
-    i=0;
     for(i=0;i<lcount;i++) {
         //uint32_t that gets filled later, printed, etc.
         uint32_t instruction = 0;
@@ -118,7 +119,7 @@ int main() {
                 // we want to make sure there are two registers and a label/number after
                 
                 //next two fields must be register numbers
-                if(isDigit(prgrm[i][opcpos+1]) == 1 && isDigit(prgrm[i][opcpos+2]) == 1) {
+                if(isRegister(prgrm[i][opcpos+1]) == 1 && isRegister(prgrm[i][opcpos+2]) == 1) {
                     //set register ints
                     r0 = atoi(prgrm[i][opcpos+1]);
                     printf("r0: %" PRIu32 "\n", r0);
@@ -131,8 +132,14 @@ int main() {
                 }
                 
                 //if label position is a digit
-                if(isDigit(prgrm[i][opcpos+3]) == 1) {// || isop(prgrm[i][opcpos+3]) == 0) {
-                    offset = atoi(prgrm[i][opcpos+3]);
+                if(isDigit(prgrm[i][opcpos+3]) == 1) {//
+                    int offset_temp = atoi(prgrm[i][opcpos+3]);
+                    if(offset_temp>65535) {
+                        printf("Offset value on line %i is incorrect!\n\nFound: %i\nRequired: A value less than 65535\n", i, offset_temp);
+                        return 0;
+                    }
+                    offset = offset_temp;
+                    printf("OFFSET: %" PRIu16"\nLine: %i\n", offset,i);
                 }
                 //if label position isn't an opcode and isn't a digit
                 else if (isop(prgrm[i][opcpos+3]) == 0) {
@@ -169,8 +176,6 @@ int main() {
                 //printing here, needs inttypes.h
                 printf("%" PRIu32 "\n", instruction);
                 printBits(instruction);
-                
-                // [31 UNUSED 25][24 OPCODE 22][21 rA 19][18 rB 16][15 Offset 0]
             }
             else if(strcmp(prgrm[i][opcpos],"sw") == 0) {
                 uint32_t lw_opcode = 3;
@@ -180,7 +185,7 @@ int main() {
                 // we want to make sure there are two registers and a label/number after
                 
                 //next two fields must be register numbers
-                if(isDigit(prgrm[i][opcpos+1]) == 1 && isDigit(prgrm[i][opcpos+2]) == 1) {
+                if(isRegister(prgrm[i][opcpos+1]) == 1 && isRegister(prgrm[i][opcpos+2]) == 1) {
                     //set register ints
                     r0 = atoi(prgrm[i][opcpos+1]);
                     printf("r0: %" PRIu32 "\n", r0);
@@ -193,8 +198,14 @@ int main() {
                 }
                 
                 //if label position is a digit
-                if(isDigit(prgrm[i][opcpos+3]) == 1) {// || isop(prgrm[i][opcpos+3]) == 0) {
-                    offset = atoi(prgrm[i][opcpos+3]);
+                if(isDigit(prgrm[i][opcpos+3]) == 1) {//
+                    int offset_temp = atoi(prgrm[i][opcpos+3]);
+                    if(offset_temp>65535) {
+                        printf("Offset value on line %i is incorrect!\n\nFound: %i\nRequired: A value less than 65535\n", i, offset_temp);
+                        return 0;
+                    }
+                    offset = offset_temp;
+                    printf("OFFSET: %" PRIu16"\nLine: %i\n", offset,i);
                 }
                 //if label position isn't an opcode and isn't a digit
                 else if (isop(prgrm[i][opcpos+3]) == 0) {
@@ -205,7 +216,6 @@ int main() {
                             printf("j: %i\ni: %i\n",j,i);
                             printf("Offset: %" PRIu16 "\n\n", offset);
                             printBits(offset);
-                            //prgrm[i][opcpos+3] = j-i;
                         }
                     }
                     if(offset == 0) {
@@ -235,6 +245,79 @@ int main() {
                 printBits(instruction);
                 
                 // [31 UNUSED 25][24 OPCODE 22][21 rA 19][18 rB 16][15 Offset 0]
+            }
+            
+            
+            
+            //R-Type
+            if(strcmp(prgrm[i][opcpos], "add") == 0)
+            {
+                printf("===========ADD=========\n");
+                uint32_t add_opcode = 0;
+                uint32_t r_dst;
+                uint32_t r0;
+                uint32_t r1;
+                
+                if((isRegister(prgrm[i][opcpos+1]) == 1) && (isRegister(prgrm[i][opcpos+2]) == 1) && (isRegister(prgrm[i][opcpos+3]) == 1)) {
+                    r_dst = atoi(prgrm[i][opcpos+1]);
+                    r0 = atoi(prgrm[i][opcpos+2]);
+                    r1 = atoi(prgrm[i][opcpos+3]);
+                }
+                else {
+                    printf("Registers given are incorrect on line %i\n",  i);
+                    return 0;
+                }
+                // [31 UNUSED 25][24 OPCODE 22][21 rA 19][18 rB 16][15 unused 3][2 dstReg 0]
+                instruction = (add_opcode<<22)|instruction;
+                printBits(instruction);
+                putchar('\n');
+                instruction = (r0<<19)|instruction;
+                printBits(instruction);
+                putchar('\n');
+                instruction = (r1<<16)|instruction;
+                printBits(instruction);
+                putchar('\n');
+                instruction = (r_dst)|instruction;
+                printBits(instruction);
+                putchar('\n');
+                
+                //printing here, needs inttypes.h
+                printf("%" PRIu32 "\n", instruction);
+                printBits(instruction);
+            }
+            else if ((strcmp(prgrm[i][opcpos], "nand") == 0)) {
+                printf("NAAAAAAND\n");
+                uint32_t nand_opcode = 1;
+                uint32_t r_dst;
+                uint32_t r0;
+                uint32_t r1;
+                
+                if((isRegister(prgrm[i][opcpos+1]) == 1) && (isRegister(prgrm[i][opcpos+2]) == 1) && (isRegister(prgrm[i][opcpos+3]) == 1)) {
+                    r_dst = atoi(prgrm[i][opcpos+1]);
+                    r0 = atoi(prgrm[i][opcpos+2]);
+                    r1 = atoi(prgrm[i][opcpos+3]);
+                }
+                else {
+                    printf("Registers given are incorrect on line %i\n",  i);
+                    return 0;
+                }
+                // [31 UNUSED 25][24 OPCODE 22][21 rA 19][18 rB 16][15 unused 3][2 dstReg 0]
+                instruction = (nand_opcode<<22)|instruction;
+                printBits(instruction);
+                putchar('\n');
+                instruction = (r0<<19)|instruction;
+                printBits(instruction);
+                putchar('\n');
+                instruction = (r1<<16)|instruction;
+                printBits(instruction);
+                putchar('\n');
+                instruction = (r_dst)|instruction;
+                printBits(instruction);
+                putchar('\n');
+                
+                //printing here, needs inttypes.h
+                printf("%" PRIu32 "\n", instruction);
+                printBits(instruction);
             }
         }
         else {
@@ -307,12 +390,12 @@ int countLines(FILE* f) {
 }
 
 //checks if the given string is an opcode or not
-int isop(char* c) {
+int isop(char* s) {
     //opcodes
     char *opcodes[] = {"lw", "sw", "add", "nand", "beq", "jalr", "halt", "noop"};
     int i=0;
     for(i=0;i<7;i++) {
-        if(strcmp(opcodes[i],c) == 0) {
+        if(strcmp(opcodes[i],s) == 0) {
             return 1;
         }
     }
@@ -321,9 +404,27 @@ int isop(char* c) {
 
 //checks if the given string is a digit or not
 int isDigit(char* s) {
+    int i;
+    if(s[0] == '-' || (s[0] <= '9' && s[0] >='0' )) {
+        for(i=1;i<strlen(s);i++) {
+            if(s[i] > '9' || s[i] < '0' ) {
+                return 0;
+            }
+        }
+        return 1;
+    }
+    return 0;
+}
+//if the given string follows register protocol:
+//-single digit
+//-between 0 and 7
+int isRegister(char* s) {
     int i=0;
+    if(strlen(s) > 1) {
+        return 0;
+    }
     for(i=0;i<strlen(s);i++) {
-        if(s[i] > '9' || s[i] < '0' ) {
+        if(s[i] > '7' || s[i] < '0' ) {
             return 0;
         }
     }
@@ -355,4 +456,3 @@ void printBits(uint32_t pack) {
     }
     putchar('\n');
 }
-
