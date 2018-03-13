@@ -23,6 +23,7 @@
 /*
  * Function Prototypes
  */
+
 char **split(char s[]);
 int countTokens(char* s);
 int countLines(FILE* f);
@@ -49,8 +50,9 @@ int main(int argc, char **argv) {
     FILE *file = NULL;
     FILE *out = NULL;
     
-    argc = 2;
+    argc = 3;
     argv[1] = "run.a";
+    argv[2] = "run.mc";
     
     //file handling
     if (argc == 1) {
@@ -77,6 +79,7 @@ int main(int argc, char **argv) {
     }
     else {
         printf("Too many input arguments! Must have a maximum of two.\nEnter one file name argument to print output to stdout\nEnter two file names to output to second file.\n");
+        return 0;
     }
     //[31 UNUSED 25][24 OPCODE 22][21 rA 19][18 rB 16][15 Offset 0]
     //counts
@@ -147,14 +150,14 @@ int main(int argc, char **argv) {
         uint32_t r1 = 0;
         uint32_t r_dst = 0;
         uint16_t offset = 0;
+        int32_t fillValue = 0;
         uint32_t instruction = 0;
+        bool foundOffset = false;
         char type = ' ';
         
         //go through first two tokens in each line and see where/if there's an opcode
         if(isop(prgrm[i][0]) == 1 || isop(prgrm[i][1]) == 1)  { //correct if
             int opcpos = opcodepos(prgrm[i], tokensPerLine[i]);
-            
-            
             /*
              * I-TYPE INSTRUCTIONS
              */
@@ -162,10 +165,10 @@ int main(int argc, char **argv) {
                 if(strcmp(prgrm[i][opcpos],"lw") == 0) {
                     opcode = 2;
                 }
-                else if(strcmp(prgrm[i][opcpos],"sw")){
+                else if(strcmp(prgrm[i][opcpos],"sw") == 0){
                     opcode = 3;
                 }
-                else { //beq
+                else if(strcmp(prgrm[i][opcpos],"beq") == 0){ //beq
                     opcode = 4;
                 }
                 type = 'I';
@@ -195,10 +198,15 @@ int main(int argc, char **argv) {
                     for(j=0;j<flines;j++) {
                         //go through label array and see if we can find a match, take that index
                         if(strcmp(prgrm[i][opcpos+3],labelArray[j]) == 0) {
-                            offset = j-(i+1);
+                            
+                            //if beq, set offset = to actual address in file rather than difference
+                            if (strcmp(prgrm[i][opcpos],"beq") == 0) { offset = j-(i+1); }
+                            else { offset = j; }
+                            
+                            foundOffset = true;
                         }
                     }
-                    if(offset == 0) {
+                    if(!foundOffset) {
                         printf("Can't find destination label: %s in line: %i\n", prgrm[i][opcpos+3], i+1);
                         return 0;
                     }
@@ -264,6 +272,29 @@ int main(int argc, char **argv) {
                     printf("Registers are incorrect on line: %i\n", i+1);
                 }
             }
+            /*
+             * .fill
+             */
+            else if(strcmp(prgrm[i][opcpos], ".fill") == 0) {
+                opcode = 0;
+                type = 'F';
+                
+                if(isDigit(prgrm[i][opcpos+1]) == 1) {
+                    fillValue = atoi(prgrm[i][opcpos+1]);
+                }
+                else if (isop(prgrm[i][opcpos+1]) == 0 && isDigit(prgrm[i][opcpos+1]) == 0) {
+                    for(j=0;j<flines;j++) {
+                        //go through label array and see if we can find a match, take that index
+                        if(strcmp(prgrm[i][opcpos+1],labelArray[j]) == 0) {
+                            fillValue = j;
+                        }
+                    }
+                }
+                else {
+                    printf("Registers are incorrect on line: %i\n", i+1);
+                    return 0;
+                }
+            }
             
             /*
              * PACKING
@@ -271,25 +302,31 @@ int main(int argc, char **argv) {
             if(type == 'I') {
                 //[31 UNUSED 25][24 OPCODE 22][21 rA 19][18 rB 16][15 Offset 0]
                 instruction = (opcode<<22)|(r0<<19)|(r1<<16)|(offset);
-                //printBits(instruction);
+                printBits(instruction);
                 fprintf(fileout == false ? stdout : out, "%" PRIu32 "\n", instruction);
             }
             else if (type == 'R') {
                 // [31 UNUSED 25][24 OPCODE 22][21 rA 19][18 rB 16][15 unused 3][2 dstReg 0]
                 instruction = (opcode<<22)|(r0<<19)|(r1<<16)|(r_dst);
-                //printBits(instruction);
+                printBits(instruction);
                 fprintf(fileout == false ? stdout : out, "%" PRIu32 "\n", instruction);
             }
             else if (type == 'J') {
                 instruction = (opcode<<25)|(r0<<19)|(r1<<16);
-                //printBits(instruction);
+                printBits(instruction);
                 fprintf(fileout == false ? stdout : out, "%" PRIu32 "\n", instruction);
             }
             else if (type == 'O') {
                 // [31 UNUSED 25][24 OPCODE 22][21 UNUSED 0]
                 instruction = opcode<<22;
-                //printBits(instruction);
+                printBits(instruction);
                 fprintf(fileout == false ? stdout : out, "%" PRIu32 "\n", instruction);
+            }
+            else if (type == 'F') {
+                // [31 UNUSED 25][24 OPCODE 22][21 UNUSED 0]
+                instruction = fillValue;
+                printBits(instruction);
+                fprintf(fileout == false ? stdout : out, "%" PRId32 "\n", instruction);
             }
         }
         else {
@@ -376,9 +413,9 @@ int countLines(FILE* f) {
 //checks if the given string is an opcode or not
 int isop(char* s) {
     //opcodes
-    char *opcodes[] = {"lw", "sw", "add", "nand", "beq", "jalr", "halt", "noop"};
+    char *opcodes[] = {"lw", "sw", "add", "nand", "beq", "jalr", "halt", "noop", ".fill"};
     int i=0;
-    for(i=0;i<=7;i++) {
+    for(i=0;i<9;i++) {
         if(strcmp(opcodes[i],s) == 0) {
             return 1;
         }
@@ -440,3 +477,4 @@ void printBits(uint32_t pack) {
     }
     putchar('\n');
 }
+
