@@ -11,6 +11,7 @@
 #include <stdlib.h>
 #include <inttypes.h>
 #include <stdbool.h>
+#include <ctype.h>
 
 /*
  * Function Prototypes
@@ -21,6 +22,7 @@ int countLines(FILE* f);
 int isop(char* s);
 int isDigit(char* s);
 int isRegister(char* s);
+bool isValidLabel(char* s);
 int opcodepos(char** line, int len);
 void printBits(uint32_t pack);
 bool isSpaceBeforeOpcode(char* s);
@@ -41,6 +43,10 @@ int main(int argc, char **argv) {
     //File handling
     FILE *file = NULL;
     FILE *out = NULL;
+    
+    argc = 3;
+    argv[1] = "run.a";
+    argv[2] = "run.mc";
     
     //file handling
     if (argc == 1) {
@@ -121,6 +127,10 @@ int main(int argc, char **argv) {
     for(i=0;i<lcount;i++) {
         char* firstToken = prgrm[i][0];
         if((isop(firstToken) == 0) && (isDigit(firstToken) == 0)) { //if it's a label
+            if(!isValidLabel(firstToken)) {
+                printf("Incorrect label: %s\nLabels must not start with a number or be larger than 9 characters, and not contain any special characters!\n", firstToken);
+                return 0;
+            }
             for(j=0; j<lcount;j++) {
                 if(strcmp(firstToken,labelArray[j]) == 0) {
                     printf("Error: Duplicate label: %s\n in line: %i\n", firstToken, i+1);
@@ -179,7 +189,7 @@ int main(int argc, char **argv) {
                 
                 //if label position is a digit
                 if(isDigit(prgrm[i][opcpos+3]) == 1) {//
-                    int offset_temp = atoi(prgrm[i][opcpos+3]);
+                    uint16_t offset_temp = atoi(prgrm[i][opcpos+3]);
                     if(offset_temp>65535) {
                         printf("Error: Offset value on line %i is incorrect!\n\nFound: %i\nRequired: A value less than 65535\n", i+1, offset_temp);
                         return 0;
@@ -195,7 +205,6 @@ int main(int argc, char **argv) {
                             //if beq, set offset = to actual address in file rather than difference
                             if (strcmp(prgrm[i][opcpos],"beq") == 0) { offset = j-(i+1); }
                             else { offset = j; }
-                            
                             foundOffset = true;
                         }
                     }
@@ -280,7 +289,7 @@ int main(int argc, char **argv) {
                 if(isDigit(prgrm[i][opcpos+1]) == 1) {
                     fillValue = atoi(prgrm[i][opcpos+1]);
                 }
-                else if (isop(prgrm[i][opcpos+1]) == 0 && isDigit(prgrm[i][opcpos+1]) == 0) {
+                else if (isop(prgrm[i][opcpos+1]) == 0 && isDigit(prgrm[i][opcpos+1]) == 0 && isValidLabel(prgrm[i][opcpos+1])) {
                     for(j=0;j<flines;j++) {
                         //go through label array and see if we can find a match, take that index
                         if(strcmp(prgrm[i][opcpos+1],labelArray[j]) == 0) {
@@ -310,7 +319,6 @@ int main(int argc, char **argv) {
                 fprintf(fileout == false ? stdout : out, "%" PRIu32 "\n", instruction);
             }
             else if (type == 'J') {
-                //[31 UNUSED 25][24 OPCODE 22][21 rA 19][18 rB 16][15 Unused 0]
                 instruction = (opcode<<25)|(r0<<19)|(r1<<16);
                 printBits(instruction);
                 fprintf(fileout == false ? stdout : out, "%" PRIu32 "\n", instruction);
@@ -322,7 +330,7 @@ int main(int argc, char **argv) {
                 fprintf(fileout == false ? stdout : out, "%" PRIu32 "\n", instruction);
             }
             else if (type == 'F') {
-                // [31 fill value 0]
+                // [31 UNUSED 25][24 OPCODE 22][21 UNUSED 0]
                 instruction = fillValue;
                 printBits(instruction);
                 fprintf(fileout == false ? stdout : out, "%" PRId32 "\n", instruction);
@@ -451,6 +459,26 @@ int isRegister(char* s) {
     return 1;
 }
 
+//checks whether or not a string is a valid label
+bool isValidLabel(char* s) {
+    int i;
+    if(isdigit(s[0])) {
+        return false;
+    }
+    if(strlen(s) > 9) {
+        return false;
+    }
+    if(isop(s) == 1) {
+        return false;
+    }
+    for(i=1;i<strlen(s);i++) {
+        if(!isalnum(s[i])) {
+            return false;
+        }
+    }
+    return true;
+}
+
 //returns the first opcode position
 int opcodepos(char** line, int len) {
     int i = 0;
@@ -505,3 +533,4 @@ bool isSpaceBeforeOpcode(char* s) {
         }
     }
 }
+
