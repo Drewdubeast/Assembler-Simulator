@@ -12,20 +12,32 @@
 #include <stdlib.h>
 #include <string.h>
 
-int countLines(FILE *f);
+#define NUMMEMORY 65535
+#define NUMREGS 8
 
+//struct for machine state
+typedef struct state_struct {
+    int pc;
+    int mem[NUMMEMORY];
+    int reg[NUMREGS];
+    int num_memory;
+} statetype;
+
+//our machine state
+statetype state;
+
+//prototypes
+int countLines(FILE *f);
+int convert_num(int num);
+void print_state(statetype *stateptr);
+
+//main
 int main(int argc, char **argv) {
-    //variables for each slot in the register...
-    int reg[8];
-    int mem[65535];
     
     //indices
     int i=0;
-    int j=0;
-    int k=0;
     
     //allocate a line as 10 characters at max
-    //char* line = malloc(sizeof(char) * 10);
     char line[15];
     
     //run-mode
@@ -67,15 +79,128 @@ int main(int argc, char **argv) {
     }
     
     //file lines
-    int lines = countLines(file);
+    int flines = countLines(file);
     
-    //program array
-    uint32_t *prgrm = malloc(sizeof(uint32_t)*lines);
-    
+    /*
+     * FIRST PASS: Go through the file and grab each instruction and put into 'prgrm' array
+     */
     for(i=0;fgets(line, sizeof(line), file) != NULL;i++) {
-        prgrm[i] = atoi(line);
-        printf("%" PRIu32 "\n", prgrm[i]);
+        state.mem[i] = atoi(line);
+        state.num_memory++;
+        printf("%d\n", state.mem[i]);
     }
+    
+    /*
+     * SECOND PASS: Break down each instruction into opcode, registers, and immediates
+     */
+    
+    //test data
+    /*
+     state.reg[2] = 6;
+     state.reg[3] = 10;
+     state.reg[1] = 5;
+     */
+    
+    int32_t opcode;
+    int32_t r0, r1, r_dst;
+    int32_t offset;
+    
+    while(state.pc<state.num_memory) {
+        opcode = ((7<<22)&(state.mem[state.pc]))>>22;
+        print_state(&state);
+        
+        printf("opcode: %d\n",opcode);
+        
+        switch(opcode) {
+                /*
+                 * ADD
+                 */
+            case 0: //ADD
+                
+                //find the next three registers and do the operation
+                r0 = ((7<<19)&(state.mem[state.pc]))>>19;
+                r1 = ((7<<16)&(state.mem[state.pc]))>>16;
+                r_dst = 7&state.mem[state.pc];
+                
+                printf("r0: %d r1: %d\n", state.reg[r0], state.reg[r1]);
+                
+                //operation
+                state.reg[r_dst] = state.reg[r0] + state.reg[r1];
+                break;
+                
+                /*
+                 * NAND
+                 */
+            case 1: //nand
+                //find the next three registers and do the operation
+                r0 = ((7<<19)&(state.mem[state.pc]))>>19;
+                r1 = ((7<<16)&(state.mem[state.pc]))>>16;
+                r_dst = 7&state.mem[state.pc];
+                
+                state.reg[r_dst] = ~(state.reg[0]&state.reg[r1]);
+                break;
+                
+                /*
+                 * LW
+                 */
+            case 2: //lw
+                
+                r0 = ((7<<19)&(state.mem[state.pc]))>>19;
+                r1 = ((7<<16)&(state.mem[state.pc]))>>16;
+                offset = convert_num(65535&state.mem[state.pc]);
+                
+                
+                printf("Offset: %d\n",offset);
+                
+                state.reg[r0] = state.mem[state.reg[r1] + offset];
+                break;
+                
+                /*
+                 * SW
+                 */
+            case 3: //sw
+                
+                r0 = ((7<<19)&(state.mem[state.pc]))>>19;
+                r1 = ((7<<16)&(state.mem[state.pc]))>>16;
+                offset = convert_num(65535&state.mem[state.pc]);
+                
+                state.mem[state.reg[r1] + offset] = state.reg[r0];
+                break;
+                
+                
+            case 4: //beq
+                
+                r0 = ((7<<19)&(state.mem[state.pc]))>>19;
+                r1 = ((7<<16)&(state.mem[state.pc]))>>16;
+                offset = convert_num(65535&state.mem[state.pc]);
+                
+                if(state.reg[r0] == state.reg[r1]) {
+                    state.pc = (state.pc+1)+ offset;
+                }
+                printf("BEQ OFFSET %d\n", offset);
+                break;
+                
+            case 5: //jalr
+                //nothing
+                break;
+                
+            case 6: //halt
+                exit(0);
+                
+                break;
+            case 7: //noop
+                //don't do anything for a cycle
+                break;
+                
+            default: //default
+                printf("Incorrect opcode in line %d\n", i+1);
+                break;
+        }
+        state.pc++;
+    }
+    
+    //last state
+    print_state(&state);
     fclose(file);
     return 0;
 }
@@ -96,4 +221,23 @@ int countLines(FILE* f) {
     //fclose(f);
     return lines;
 }
-
+int convert_num(int num) {
+    if (num&(1<<15)) {
+        num -= (1<<16);
+    }
+    return(num);
+}
+void print_state(statetype *stateptr){
+    int i;
+    printf("\n@@@\nstate:\n");
+    printf("\tpc %d\n", stateptr->pc);
+    printf("\tmemory:\n");
+    for(i = 0; i < stateptr->num_memory; i++){
+        printf("\t\tmem[%d]=%d\n", i, stateptr->mem[i]);
+    }
+    printf("\tregisters:\n");
+    for(i = 0; i < NUMREGS; i++){
+        printf("\t\treg[%d]=%d\n", i, stateptr->reg[i]);
+    }
+    printf("end state\n");
+}
