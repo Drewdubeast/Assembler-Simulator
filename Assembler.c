@@ -43,11 +43,7 @@ int main(int argc, char **argv) {
     //File handling
     FILE *file = NULL;
     FILE *out = NULL;
-    
-    argc = 3;
-    argv[1] = "run.a";
-    argv[2] = "run.mc";
-    
+
     //file handling
     if (argc == 1) {
         printf("No file input!\n");
@@ -309,30 +305,30 @@ int main(int argc, char **argv) {
             if(type == 'I') {
                 //[31 UNUSED 25][24 OPCODE 22][21 rA 19][18 rB 16][15 Offset 0]
                 instruction = (opcode<<22)|(r0<<19)|(r1<<16)|(offset);
-                printBits(instruction);
+                //printBits(instruction);
                 fprintf(fileout == false ? stdout : out, "%" PRIu32 "\n", instruction);
             }
             else if (type == 'R') {
                 // [31 UNUSED 25][24 OPCODE 22][21 rA 19][18 rB 16][15 unused 3][2 dstReg 0]
                 instruction = (opcode<<22)|(r0<<19)|(r1<<16)|(r_dst);
-                printBits(instruction);
+                //printBits(instruction);
                 fprintf(fileout == false ? stdout : out, "%" PRIu32 "\n", instruction);
             }
             else if (type == 'J') {
                 instruction = (opcode<<25)|(r0<<19)|(r1<<16);
-                printBits(instruction);
+                //printBits(instruction);
                 fprintf(fileout == false ? stdout : out, "%" PRIu32 "\n", instruction);
             }
             else if (type == 'O') {
                 // [31 UNUSED 25][24 OPCODE 22][21 UNUSED 0]
                 instruction = opcode<<22;
-                printBits(instruction);
+                //printBits(instruction);
                 fprintf(fileout == false ? stdout : out, "%" PRIu32 "\n", instruction);
             }
             else if (type == 'F') {
                 // [31 UNUSED 25][24 OPCODE 22][21 UNUSED 0]
                 instruction = fillValue;
-                printBits(instruction);
+                //printBits(instruction);
                 fprintf(fileout == false ? stdout : out, "%" PRId32 "\n", instruction);
             }
         }
@@ -342,7 +338,7 @@ int main(int argc, char **argv) {
         }
     }
     fclose(file);
-    fclose(out);
+    if(fileout) {fclose(out);}
     
     /*
      * FREEING MEMORY
@@ -533,4 +529,3 @@ bool isSpaceBeforeOpcode(char* s) {
         }
     }
 }
-
