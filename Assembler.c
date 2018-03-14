@@ -43,7 +43,13 @@ int main(int argc, char **argv) {
     //File handling
     FILE *file = NULL;
     FILE *out = NULL;
-
+    
+    /* TESTING
+     argc = 3;
+     argv[1] = "run.a";
+     argv[2] = "run.mc";
+     */
+    
     //file handling
     if (argc == 1) {
         printf("No file input!\n");
@@ -182,10 +188,11 @@ int main(int argc, char **argv) {
                     printf("Error: Illegal registers for I-Type instruction in line: %i\n\n\nRequired: [opcode] [int] [int] [int]\n", i+1);
                     return 0;
                 }
-                
                 //if label position is a digit
                 if(isDigit(prgrm[i][opcpos+3]) == 1) {//
-                    uint16_t offset_temp = atoi(prgrm[i][opcpos+3]);
+                    
+                    //store temp in 32 to compare with max 16bit value to make sure it's not over.
+                    uint32_t offset_temp = atoi(prgrm[i][opcpos+3]);
                     if(offset_temp>65535) {
                         printf("Error: Offset value on line %i is incorrect!\n\nFound: %i\nRequired: A value less than 65535\n", i+1, offset_temp);
                         return 0;
@@ -529,3 +536,4 @@ bool isSpaceBeforeOpcode(char* s) {
         }
     }
 }
+
