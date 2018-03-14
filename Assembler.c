@@ -1,18 +1,10 @@
 //
-//  main.c
+//  Assembler.c
 //  Assembler-Simulator-XP
 //
-//  Created by Drew Wilken and Nathan on 3/1/18.
+//  Created by Drew Wilken and Nathan Taylor on 3/1/18.
 //  Copyright © 2018 Drew Wilken and Nathan Taylor. All rights reserved.
 //
-
-
-/*
- * TO ADD:
- *
- *
- *
- */
 
 #include <stdio.h>
 #include <string.h>
@@ -23,7 +15,6 @@
 /*
  * Function Prototypes
  */
-
 char **split(char s[]);
 int countTokens(char* s);
 int countLines(FILE* f);
@@ -32,6 +23,7 @@ int isDigit(char* s);
 int isRegister(char* s);
 int opcodepos(char** line, int len);
 void printBits(uint32_t pack);
+bool isSpaceBeforeOpcode(char* s);
 
 /*
  * MAIN FUNCTION
@@ -49,10 +41,6 @@ int main(int argc, char **argv) {
     //File handling
     FILE *file = NULL;
     FILE *out = NULL;
-    
-    argc = 3;
-    argv[1] = "run.a";
-    argv[2] = "run.mc";
     
     //file handling
     if (argc == 1) {
@@ -81,7 +69,7 @@ int main(int argc, char **argv) {
         printf("Too many input arguments! Must have a maximum of two.\nEnter one file name argument to print output to stdout\nEnter two file names to output to second file.\n");
         return 0;
     }
-    //[31 UNUSED 25][24 OPCODE 22][21 rA 19][18 rB 16][15 Offset 0]
+    
     //counts
     int lcount = 0;
     
@@ -110,6 +98,11 @@ int main(int argc, char **argv) {
         lcount++;
         tokensPerLine[i] = countTokens(line);
         line[strlen(line)-1] = '\0';
+        
+        if(isSpaceBeforeOpcode(line) == false) {
+            printf("Warning: opcodes must have a space before them, and labels must not.\nLine %d does not follow this rule!\n", lcount);
+            return 0;
+        }
         prgrm[i] = split(line);
         labelArray[i] = "";
         i++;
@@ -128,9 +121,9 @@ int main(int argc, char **argv) {
     for(i=0;i<lcount;i++) {
         char* firstToken = prgrm[i][0];
         if((isop(firstToken) == 0) && (isDigit(firstToken) == 0)) { //if it's a label
-            for(j =0; j<lcount;j++) {
+            for(j=0; j<lcount;j++) {
                 if(strcmp(firstToken,labelArray[j]) == 0) {
-                    printf("Duplicate label: %s\n in line: %i", firstToken, i+1);
+                    printf("Error: Duplicate label: %s\n in line: %i\n", firstToken, i+1);
                     return 0;
                 }
             }
@@ -138,22 +131,22 @@ int main(int argc, char **argv) {
         }
         else {
             labelArray[i] = "";
-            putchar('\n');
         }
     }
     /*
      * SECOND PASS
      */
+    uint32_t opcode = -1;
+    uint32_t r0 = 0;
+    uint32_t r1 = 0;
+    uint32_t r_dst = 0;
+    uint16_t offset = 0;
+    int32_t fillValue = 0;
+    uint32_t instruction = 0;
+    bool foundOffset = false;
+    bool hasHalted = false;
+    char type = ' ';
     for(i=0;i<lcount;i++) {
-        uint32_t opcode = -1;
-        uint32_t r0 = 0;
-        uint32_t r1 = 0;
-        uint32_t r_dst = 0;
-        uint16_t offset = 0;
-        int32_t fillValue = 0;
-        uint32_t instruction = 0;
-        bool foundOffset = false;
-        char type = ' ';
         
         //go through first two tokens in each line and see where/if there's an opcode
         if(isop(prgrm[i][0]) == 1 || isop(prgrm[i][1]) == 1)  { //correct if
@@ -180,7 +173,7 @@ int main(int argc, char **argv) {
                     r1 = atoi(prgrm[i][opcpos+2]);
                 }
                 else {
-                    printf("Illegal registers for I-Type instruction in line: %i\n\n\nRequired: [opcode] [int] [int] [int]\n", i+1);
+                    printf("Error: Illegal registers for I-Type instruction in line: %i\n\n\nRequired: [opcode] [int] [int] [int]\n", i+1);
                     return 0;
                 }
                 
@@ -188,7 +181,7 @@ int main(int argc, char **argv) {
                 if(isDigit(prgrm[i][opcpos+3]) == 1) {//
                     int offset_temp = atoi(prgrm[i][opcpos+3]);
                     if(offset_temp>65535) {
-                        printf("Offset value on line %i is incorrect!\n\nFound: %i\nRequired: A value less than 65535\n", i+1, offset_temp);
+                        printf("Error: Offset value on line %i is incorrect!\n\nFound: %i\nRequired: A value less than 65535\n", i+1, offset_temp);
                         return 0;
                     }
                     offset = offset_temp;
@@ -207,7 +200,7 @@ int main(int argc, char **argv) {
                         }
                     }
                     if(!foundOffset) {
-                        printf("Can't find destination label: %s in line: %i\n", prgrm[i][opcpos+3], i+1);
+                        printf("Error: Can't find destination label: %s in line: %i\n", prgrm[i][opcpos+3], i+1);
                         return 0;
                     }
                 }
@@ -238,7 +231,7 @@ int main(int argc, char **argv) {
                     r1 = atoi(prgrm[i][opcpos+3]);
                 }
                 else {
-                    printf("Registers given are incorrect on line %i\n",  i+1);
+                    printf("Error: Registers given are incorrect on line %i\n",  i+1);
                     return 0;
                 }
             }
@@ -249,6 +242,7 @@ int main(int argc, char **argv) {
              */
             else if (strcmp(prgrm[i][opcpos], "halt") == 0 || strcmp(prgrm[i][opcpos], "noop") == 0) {
                 if (strcmp(prgrm[i][opcpos], "halt") == 0) {
+                    hasHalted = true;
                     opcode = 6;
                 }
                 else {
@@ -269,13 +263,17 @@ int main(int argc, char **argv) {
                     r1 = atoi(prgrm[i][opcpos+2]);
                 }
                 else {
-                    printf("Registers are incorrect on line: %i\n", i+1);
+                    printf("Error: Registers are incorrect on line: %i\n", i+1);
                 }
             }
             /*
              * .fill
              */
             else if(strcmp(prgrm[i][opcpos], ".fill") == 0) {
+                if(!hasHalted) {
+                    printf("Error: .fill instructions must be written after halt only!\n");
+                    return 0;
+                }
                 opcode = 0;
                 type = 'F';
                 
@@ -291,7 +289,7 @@ int main(int argc, char **argv) {
                     }
                 }
                 else {
-                    printf("Registers are incorrect on line: %i\n", i+1);
+                    printf("Error: Registers are incorrect on line: %i\n", i+1);
                     return 0;
                 }
             }
@@ -312,6 +310,7 @@ int main(int argc, char **argv) {
                 fprintf(fileout == false ? stdout : out, "%" PRIu32 "\n", instruction);
             }
             else if (type == 'J') {
+                //[31 UNUSED 25][24 OPCODE 22][21 rA 19][18 rB 16][15 Unused 0]
                 instruction = (opcode<<25)|(r0<<19)|(r1<<16);
                 printBits(instruction);
                 fprintf(fileout == false ? stdout : out, "%" PRIu32 "\n", instruction);
@@ -323,14 +322,14 @@ int main(int argc, char **argv) {
                 fprintf(fileout == false ? stdout : out, "%" PRIu32 "\n", instruction);
             }
             else if (type == 'F') {
-                // [31 UNUSED 25][24 OPCODE 22][21 UNUSED 0]
+                // [31 fill value 0]
                 instruction = fillValue;
                 printBits(instruction);
                 fprintf(fileout == false ? stdout : out, "%" PRId32 "\n", instruction);
             }
         }
         else {
-            printf("No opcode found in correct position for line: %i\n", i+1);
+            printf("Error: No opcode found in correct position for line: %i\n", i+1);
             return 0;
         }
     }
@@ -478,3 +477,31 @@ void printBits(uint32_t pack) {
     putchar('\n');
 }
 
+//Checks if the first character is a space and if it's an opcode
+//in conformance to Dr. Myre's format rules
+bool isSpaceBeforeOpcode(char* s) {
+    char* firstToken;
+    char* temp;
+    
+    temp = strdup(s);
+    
+    firstToken = strtok (temp," ");
+    
+    if(isop(firstToken)) {
+        //check to see if space before
+        if (temp[0] == ' ') {
+            return true;
+        }
+        else {
+            return false;
+        }
+    }
+    else {
+        if (temp[0] == ' ') {
+            return false;
+        }
+        else {
+            return true;
+        }
+    }
+}
