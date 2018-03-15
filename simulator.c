@@ -47,8 +47,8 @@ int main(int argc, char **argv) {
     FILE *file = NULL;
     FILE *out = NULL;
     
-    argc = 2;
-    argv[1] = "run.mc";
+    //argc = 2;
+    //argv[1] = "run.mc";
     
     //file handling
     if (argc == 1) {
@@ -126,6 +126,7 @@ int main(int argc, char **argv) {
                 
                 //operation
                 state.reg[r_dst] = state.reg[r0] + state.reg[r1];
+                state.pc++;
                 break;
                 
                 /*
@@ -138,6 +139,7 @@ int main(int argc, char **argv) {
                 r_dst = 7&state.mem[state.pc];
                 
                 state.reg[r_dst] = ~(state.reg[0]&state.reg[r1]);
+                state.pc++;
                 break;
                 
                 /*
@@ -153,6 +155,7 @@ int main(int argc, char **argv) {
                 printf("Offset: %d\n",offset);
                 
                 state.reg[r0] = state.mem[state.reg[r1] + offset];
+                state.pc++;
                 break;
                 
                 /*
@@ -165,6 +168,7 @@ int main(int argc, char **argv) {
                 offset = convert_num(65535&state.mem[state.pc]);
                 
                 state.mem[state.reg[r1] + offset] = state.reg[r0];
+                state.pc++;
                 break;
                 
                 
@@ -172,17 +176,27 @@ int main(int argc, char **argv) {
                 
                 r0 = ((7<<19)&(state.mem[state.pc]))>>19;
                 r1 = ((7<<16)&(state.mem[state.pc]))>>16;
+                printf("r0: %i\tr1: %i\t", r0, r1);
                 offset = convert_num(65535&state.mem[state.pc]);
-                
+                printf("offset:%i\t", offset);
                 if(state.reg[r0] == state.reg[r1]) {
-                    state.pc = (state.pc+1)+ offset;
+                  printf("state.reg[r0] and state.reg[r1] are equal..");  
+                  printf("state.pc: %i\t", state.pc);
+                  state.pc = (state.pc+1)+ offset;
+                  printf("state.pc has been set to PC+1 + offset (which is %i): %i\t", offset, state.pc);
+                }
+                else
+                {
+                  state.pc++;
                 }
                 printf("BEQ OFFSET %d\n", offset);
                 break;
                 
             case 5: //jalr
                 //nothing
-                break;
+                //I guess we just increment PC? We're not executing anything though....
+            		//state.pc++;
+		            break;
                 
             case 6: //halt
                 exit(0);
@@ -190,13 +204,16 @@ int main(int argc, char **argv) {
                 break;
             case 7: //noop
                 //don't do anything for a cycle
-                break;
+                //but we should update pc, otherwise it'll freeze.
+		            state.pc++;
+		            break;
                 
             default: //default
                 printf("Incorrect opcode in line %d\n", i+1);
                 break;
         }
-        state.pc++;
+        //Doing this here may very well lead to confusion. I've changed it to run in every case...
+        //state.pc++;
     }
     
     //last state
