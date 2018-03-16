@@ -43,6 +43,9 @@ int main(int argc, char **argv) {
     //run-mode
     bool fileout = false;
     
+    //instruction count
+    int instr_count = 0;
+    
     //File handling
     FILE *file = NULL;
     FILE *out = NULL;
@@ -94,13 +97,6 @@ int main(int argc, char **argv) {
      * SECOND PASS: Break down each instruction into opcode, registers, and immediates
      */
     
-    //test data
-    /*
-     state.reg[2] = 6;
-     state.reg[3] = 10;
-     state.reg[1] = 5;
-     */
-    
     int32_t opcode;
     int32_t r0, r1, r_dst;
     int32_t offset;
@@ -122,7 +118,7 @@ int main(int argc, char **argv) {
                 r1 = ((7<<16)&(state.mem[state.pc]))>>16;
                 r_dst = 7&state.mem[state.pc];
                 
-                printf("r0: %d r1: %d\n", state.reg[r0], state.reg[r1]);
+                printf("%i %i %i %i\n", opcode, r0, r1, r_dst);
                 
                 //operation
                 state.reg[r_dst] = state.reg[r0] + state.reg[r1];
@@ -138,7 +134,11 @@ int main(int argc, char **argv) {
                 r1 = ((7<<16)&(state.mem[state.pc]))>>16;
                 r_dst = 7&state.mem[state.pc];
                 
-                state.reg[r_dst] = ~(state.reg[0]&state.reg[r1]);
+                printf("%i %i %i %i\n", opcode, r0, r1, r_dst);
+                
+                // printf("%d nand %d: %d\n", state.reg[r0], state.reg[r1], )
+                
+                state.reg[r_dst] = ~(state.reg[r0]&state.reg[r1]);
                 state.pc++;
                 break;
                 
@@ -151,8 +151,7 @@ int main(int argc, char **argv) {
                 r1 = ((7<<16)&(state.mem[state.pc]))>>16;
                 offset = convert_num(65535&state.mem[state.pc]);
                 
-                
-                printf("Offset: %d\n",offset);
+                printf("%i %i %i %i\n", opcode, r0, r1, offset);
                 
                 state.reg[r0] = state.mem[state.reg[r1] + offset];
                 state.pc++;
@@ -167,6 +166,8 @@ int main(int argc, char **argv) {
                 r1 = ((7<<16)&(state.mem[state.pc]))>>16;
                 offset = convert_num(65535&state.mem[state.pc]);
                 
+                printf("%i %i %i %i\n", opcode, r0, r1, offset);
+                
                 state.mem[state.reg[r1] + offset] = state.reg[r0];
                 state.pc++;
                 break;
@@ -176,18 +177,16 @@ int main(int argc, char **argv) {
                 
                 r0 = ((7<<19)&(state.mem[state.pc]))>>19;
                 r1 = ((7<<16)&(state.mem[state.pc]))>>16;
-                printf("r0: %i\tr1: %i\t", r0, r1);
                 offset = convert_num(65535&state.mem[state.pc]);
-                printf("offset:%i\t", offset);
+                
+                printf("%i %i %i %i\n", opcode, r0, r1, offset);
+                
                 if(state.reg[r0] == state.reg[r1]) {
-                  printf("state.reg[r0] and state.reg[r1] are equal..");  
-                  printf("state.pc: %i\t", state.pc);
-                  state.pc = (state.pc+1)+ offset;
-                  printf("state.pc has been set to PC+1 + offset (which is %i): %i\t", offset, state.pc);
+                    state.pc = (++state.pc)+ offset;
                 }
                 else
                 {
-                  state.pc++;
+                    state.pc++;
                 }
                 printf("BEQ OFFSET %d\n", offset);
                 break;
@@ -195,8 +194,8 @@ int main(int argc, char **argv) {
             case 5: //jalr
                 //nothing
                 //I guess we just increment PC? We're not executing anything though....
-            		//state.pc++;
-		            break;
+                //state.pc++;
+                break;
                 
             case 6: //halt
                 exit(0);
@@ -205,19 +204,22 @@ int main(int argc, char **argv) {
             case 7: //noop
                 //don't do anything for a cycle
                 //but we should update pc, otherwise it'll freeze.
-		            state.pc++;
-		            break;
+                state.pc++;
+                break;
                 
             default: //default
                 printf("Incorrect opcode in line %d\n", i+1);
                 break;
         }
+        instr_count++;
+        printf("Instruction count: %d\n", instr_count);
         //Doing this here may very well lead to confusion. I've changed it to run in every case...
         //state.pc++;
     }
     
     //last state
     print_state(&state);
+    printf("Instruction count: %d\n", instr_count);
     fclose(file);
     return 0;
 }
@@ -258,3 +260,4 @@ void print_state(statetype *stateptr){
     }
     printf("end state\n");
 }
+
